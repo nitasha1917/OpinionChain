@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpinionChain — Your Thoughts on the Blockchain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0a0f;
+    --paper: #f0ede6;
+    --paper2: #e8e4db;
+    --amber: #e8a020;
+    --amber-dim: #c47a10;
+    --teal: #0d9488;
+    --teal-light: #14b8a6;
+    --red: #dc2626;
+    --muted: #6b6460;
+    --border: #c8c0b4;
+    --block-bg: #1a1a2e;
+    --block-text: #a0f0c8;
+    --chain-color: #e8a020;
+    --glow: rgba(232,160,32,0.18);
+    --violet: #7c3aed;
+    --violet-light: #a78bfa;
+  }
+ 
+  * { margin:0; padding:0; box-sizing:border-box; }
+ 
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+ 
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 999;
+    opacity: 0.5;
+  }
+ 
+  /* ─── HEADER ─── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 40px;
+    border-bottom: 2px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .logo-mark {
+    width: 38px; height: 38px;
+    background: var(--amber);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 800; color: var(--ink);
+    font-family: 'Syne', sans-serif;
+    letter-spacing: -1px;
+  }
+  .logo-text { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--amber); }
+ 
+  /* NAV TABS in header */
+  .header-nav {
+    display: flex; gap: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .nav-tab {
+    font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+    padding: 7px 16px; border-radius: 6px; border: none; cursor: pointer;
+    background: transparent; color: #6a6a8a;
+    letter-spacing: 0.3px; transition: all 0.2s;
+  }
+  .nav-tab:hover { color: var(--paper); }
+  .nav-tab.active { background: var(--amber); color: var(--ink); }
+ 
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .chain-status {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    padding: 6px 14px; border-radius: 4px;
+    border: 1px solid #2a2a40;
+    color: var(--block-text);
+    background: rgba(13,148,136,0.12);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal-light);
+    animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+ 
+  .btn-connect {
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+    padding: 9px 20px; border-radius: 6px; border: none; cursor: pointer;
+    background: var(--amber); color: var(--ink);
+    letter-spacing: 0.3px; transition: all 0.2s;
+  }
+  .btn-connect:hover { background: #f5b030; transform: translateY(-1px); }
+  .btn-connect.connected { background: var(--teal); color: white; font-size: 11px; }
+ 
+  /* ─── PAGE SECTIONS (tabs) ─── */
+  .page-section { display: none; }
+  .page-section.active { display: block; }
+ 
+  /* ─── MAIN LAYOUT ─── */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 0;
+    min-height: calc(100vh - 67px);
+  }
+ 
+  .left-panel {
+    border-right: 2px solid var(--ink);
+    display: flex; flex-direction: column;
+  }
+ 
+  /* ─── HERO ─── */
+  .hero {
+    padding: 48px 40px 36px;
+    border-bottom: 2px solid var(--ink);
+    background: linear-gradient(135deg, var(--ink) 0%, #1a0a2e 100%);
+    color: var(--paper);
+    position: relative; overflow: hidden;
+  }
+  .hero::after {
+    content: 'OC';
+    position: absolute; right: -20px; bottom: -40px;
+    font-family: 'Syne', sans-serif; font-size: 200px; font-weight: 800;
+    color: rgba(232,160,32,0.06); line-height: 1; pointer-events: none;
+    letter-spacing: -10px;
+  }
+  .hero-tag {
+    font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--amber);
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .hero-tag::before { content: ''; width: 20px; height: 1px; background: var(--amber); }
+  .hero h2 {
+    font-family: 'Syne', sans-serif; font-size: 36px; font-weight: 800;
+    line-height: 1.1; letter-spacing: -1px; margin-bottom: 14px;
+  }
+  .hero h2 em { color: var(--amber); font-style: normal; }
+  .hero p { font-size: 14px; color: #a09890; line-height: 1.6; max-width: 420px; }
+ 
+  /* ─── QUESTION AREA ─── */
+  .question-section {
+    padding: 32px 40px;
+    border-bottom: 2px solid var(--ink);
+    flex: 1;
+  }
+  .section-label {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+ 
+  .question-card {
+    background: var(--ink); color: var(--paper);
+    border-radius: 12px; padding: 28px; margin-bottom: 20px;
+    position: relative; animation: fadeSlideIn 0.4s ease;
+  }
+  @keyframes fadeSlideIn { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:translateY(0);} }
+  .q-number { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--amber); margin-bottom: 10px; letter-spacing: 1px; }
+  .q-text { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; line-height: 1.3; margin-bottom: 22px; }
+  .q-category { font-size: 11px; color: #6b6b8a; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 1.5px; }
+ 
+  .answer-input {
+    width: 100%; min-height: 110px;
+    background: white; border: 2px solid var(--border);
+    border-radius: 10px; padding: 16px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; line-height: 1.6;
+    color: var(--ink); resize: vertical; transition: border-color 0.2s;
+  }
+  .answer-input:focus { outline: none; border-color: var(--ink); }
+  .answer-input::placeholder { color: #b0a898; }
+ 
+  .char-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); text-align: right; margin-top: 6px; }
+ 
+  .submit-row { display: flex; gap: 12px; margin-top: 16px; align-items: center; }
+  .btn-submit {
+    flex: 1; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
+    padding: 14px 24px; border-radius: 8px; border: 2px solid var(--ink);
+    background: var(--ink); color: var(--paper); cursor: pointer;
+    transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-submit:hover { background: #1a1a2e; transform: translateY(-1px); }
+  .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-skip {
+    font-family: 'DM Sans', sans-serif; font-size: 13px;
+    padding: 14px 18px; border-radius: 8px; border: 2px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer; transition: all 0.2s;
+  }
+  .btn-skip:hover { border-color: var(--ink); color: var(--ink); }
+ 
+  /* ─── AI ANALYSIS PANEL ─── */
+  .ai-section {
+    padding: 24px 40px;
+    background: #faf8f4;
+    border-top: 2px solid var(--ink);
+  }
+  .ai-result { display: none; animation: fadeSlideIn 0.5s ease; }
+  .ai-result.visible { display: block; }
+ 
+  .ai-thinking {
+    display: none; align-items: center; gap: 12px; padding: 16px;
+    background: var(--ink); color: var(--block-text); border-radius: 8px;
+    font-family: 'DM Mono', monospace; font-size: 12px;
+  }
+  .ai-thinking.visible { display: flex; }
+  .think-dots span {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--amber); margin: 0 2px; animation: bounce 1.2s infinite;
+  }
+  .think-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .think-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0);} 30%{transform:translateY(-6px);} }
+ 
+  .ai-card { border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; }
+  .ai-card-header {
+    background: var(--ink); color: var(--paper);
+    padding: 12px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+  }
+  .ai-model-tag { background: rgba(232,160,32,0.25); color: var(--amber); padding: 3px 8px; border-radius: 3px; font-size: 10px; }
+  .ai-body { padding: 18px; background: white; }
+  .ai-thinking-style { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; color: var(--ink); margin-bottom: 10px; }
+  .ai-thinking-style span { color: var(--teal); }
+  .ai-summary { font-size: 13px; color: var(--muted); line-height: 1.65; margin-bottom: 16px; }
+  .ai-traits { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+  .trait-chip {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    padding: 5px 11px; border-radius: 4px;
+    border: 1.5px solid var(--border);
+    color: var(--muted); background: var(--paper2); letter-spacing: 0.5px;
+  }
+  .trait-chip.highlight { border-color: var(--teal); color: var(--teal); background: rgba(13,148,136,0.08); }
+  .ai-score-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 4px; }
+  .score-item { text-align: center; }
+  .score-bar-wrap { height: 4px; background: var(--paper2); border-radius: 2px; margin: 5px 0 4px; }
+  .score-bar { height: 100%; border-radius: 2px; background: var(--teal); transition: width 1s ease; }
+  .score-label { font-family: 'DM Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  .score-val { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--ink); }
+ 
+  /* ─── RIGHT PANEL — BLOCKCHAIN ─── */
+  .right-panel {
+    background: var(--block-bg);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .chain-header {
+    padding: 20px 24px; border-bottom: 1px solid #1e2040;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .chain-title {
+    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
+    color: var(--paper); display: flex; align-items: center; gap: 10px;
+  }
+  .chain-icon { color: var(--chain-color); font-size: 16px; }
+  .chain-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--block-text); background: rgba(13,148,136,0.15); padding: 3px 9px; border-radius: 3px; }
+ 
+  .chain-stats { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #1e2040; }
+  .stat-box { padding: 16px 20px; border-right: 1px solid #1e2040; }
+  .stat-box:last-child { border-right: none; }
+  .stat-val { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--paper); }
+  .stat-key { font-family: 'DM Mono', monospace; font-size: 10px; color: #4a4a6a; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+ 
+  .blocks-scroll { flex: 1; overflow-y: auto; padding: 16px; scrollbar-width: thin; scrollbar-color: #2a2a4a transparent; }
+  .empty-chain { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #3a3a5a; text-align: center; font-family: 'DM Mono', monospace; font-size: 12px; line-height: 2; }
+  .empty-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
+ 
+  .block-card {
+    background: #12122a; border: 1px solid #1e2040;
+    border-radius: 8px; margin-bottom: 10px;
+    overflow: hidden; animation: blockIn 0.5s ease; position: relative;
+  }
+  @keyframes blockIn {
+    from { opacity: 0; transform: scale(0.95); border-color: var(--chain-color); box-shadow: 0 0 20px var(--glow); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .block-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--chain-color); }
+  .block-card.explore-block::before { background: var(--violet-light); }
+  .block-header { padding: 10px 14px 8px 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e2040; }
+  .block-id { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--chain-color); display: flex; align-items: center; gap: 6px; }
+  .block-id.explore { color: var(--violet-light); }
+  .block-num { background: rgba(232,160,32,0.12); padding: 2px 7px; border-radius: 3px; }
+  .block-num.explore { background: rgba(124,58,237,0.2); }
+  .block-ts { font-family: 'DM Mono', monospace; font-size: 10px; color: #4a4a6a; }
+  .block-body { padding: 12px 14px 12px 18px; }
+  .block-q { font-size: 11px; color: #6a6a8a; font-family: 'DM Mono', monospace; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+  .block-answer { font-size: 13px; color: #c0c0e0; line-height: 1.5; margin-bottom: 10px; }
+  .block-ai-tag { display: inline-flex; align-items: center; gap: 5px; background: rgba(13,148,136,0.15); border: 1px solid rgba(13,148,136,0.3); color: var(--teal-light); font-family: 'DM Mono', monospace; font-size: 10px; padding: 4px 9px; border-radius: 4px; margin-bottom: 10px; letter-spacing: 0.5px; }
+  .block-ai-tag.explore { background: rgba(124,58,237,0.15); border-color: rgba(124,58,237,0.3); color: var(--violet-light); }
+  .block-hash-row { border-top: 1px solid #1a1a30; padding-top: 9px; margin-top: 4px; }
+  .hash-line { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 3px; }
+  .hash-key { font-family: 'DM Mono', monospace; font-size: 9px; color: #3a3a5a; text-transform: uppercase; letter-spacing: 1px; min-width: 55px; padding-top: 1px; }
+  .hash-val { font-family: 'DM Mono', monospace; font-size: 9px; color: #4a4a7a; word-break: break-all; line-height: 1.4; }
+  .hash-val.valid { color: #34d399; }
+  .valid-badge { display: inline-flex; align-items: center; gap: 4px; font-family: 'DM Mono', monospace; font-size: 9px; color: #34d399; margin-top: 6px; letter-spacing: 0.5px; }
+  .chain-link { display: flex; justify-content: center; align-items: center; height: 16px; color: #2a2a4a; font-size: 16px; margin: -4px 0; }
+ 
+  .profile-panel { border-top: 1px solid #1e2040; padding: 16px 20px; }
+  .profile-title { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: #4a4a6a; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .profile-title::after { content: ''; flex: 1; height: 1px; background: #1e2040; }
+  .profile-empty { font-family: 'DM Mono', monospace; font-size: 11px; color: #3a3a5a; text-align: center; padding: 10px; }
+  .archetype-display { display: none; }
+  .archetype-display.visible { display: block; animation: fadeSlideIn 0.4s ease; }
+  .archetype-name { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--amber); letter-spacing: -0.5px; margin-bottom: 4px; }
+  .archetype-desc { font-size: 12px; color: #6a6a8a; line-height: 1.5; margin-bottom: 12px; }
+  .profile-bars { display: flex; flex-direction: column; gap: 8px; }
+  .prof-bar-row { display: flex; align-items: center; gap: 10px; }
+  .prof-bar-label { font-family: 'DM Mono', monospace; font-size: 10px; color: #4a4a6a; width: 80px; text-align: right; text-transform: uppercase; letter-spacing: 0.5px; }
+  .prof-bar-track { flex: 1; height: 4px; background: #1e2040; border-radius: 2px; overflow: hidden; }
+  .prof-bar-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+  .prof-bar-pct { font-family: 'DM Mono', monospace; font-size: 10px; color: #4a4a6a; width: 28px; }
+ 
+  /* ═══════════════════════════════════════════
+     ASK & EXPLORE SECTION
+  ═══════════════════════════════════════════ */
+  #exploreSection {
+    display: none;
+  }
+  #exploreSection.active {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    min-height: calc(100vh - 67px);
+  }
+ 
+  .explore-left {
+    border-right: 2px solid var(--ink);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+ 
+  /* Explore Hero */
+  .explore-hero {
+    padding: 40px 40px 32px;
+    border-bottom: 2px solid var(--ink);
+    background: linear-gradient(135deg, #1a0a2e 0%, #0a0a1e 100%);
+    color: var(--paper);
+    position: relative; overflow: hidden;
+  }
+  .explore-hero::after {
+    content: '?';
+    position: absolute; right: 20px; bottom: -20px;
+    font-family: 'Syne', sans-serif; font-size: 180px; font-weight: 800;
+    color: rgba(124,58,237,0.08); line-height: 1; pointer-events: none;
+  }
+  .explore-hero .hero-tag { color: var(--violet-light); }
+  .explore-hero .hero-tag::before { background: var(--violet-light); }
+  .explore-hero h2 em { color: var(--violet-light); }
+  .explore-hero p { color: #a09890; }
+ 
+  /* Ask Your Question Area */
+  .ask-panel {
+    padding: 32px 40px;
+    border-bottom: 2px solid var(--ink);
+  }
+ 
+  .question-composer {
+    background: var(--ink);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid var(--ink);
+  }
+  .composer-header {
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid #2a2a40;
+  }
+  .composer-icon {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: rgba(124,58,237,0.25); border: 1px solid rgba(124,58,237,0.4);
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+    flex-shrink: 0;
+  }
+  .composer-label {
+    font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--violet-light);
+  }
+ 
+  .question-input-box {
+    width: 100%; background: transparent; border: none; outline: none;
+    font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 600;
+    color: var(--paper); padding: 20px 20px 14px;
+    line-height: 1.4; resize: none; min-height: 70px;
+  }
+  .question-input-box::placeholder { color: #4a4a6a; font-weight: 400; }
+ 
+  .composer-divider { height: 1px; background: #1e2040; margin: 0 20px; }
+ 
+  .your-answer-box {
+    width: 100%; background: transparent; border: none; outline: none;
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    color: #a0a0c0; padding: 14px 20px 20px;
+    line-height: 1.6; resize: none; min-height: 80px;
+  }
+  .your-answer-box::placeholder { color: #3a3a5a; }
+ 
+  .composer-footer {
+    padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid #1e2040;
+  }
+  .composer-hint {
+    font-family: 'DM Mono', monospace; font-size: 10px; color: #3a3a5a;
+    letter-spacing: 0.5px;
+  }
+  .btn-explore {
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+    padding: 10px 22px; border-radius: 7px; border: none; cursor: pointer;
+    background: var(--violet); color: white;
+    display: flex; align-items: center; gap: 8px;
+    transition: all 0.2s; letter-spacing: 0.2px;
+  }
+  .btn-explore:hover { background: #6d28d9; transform: translateY(-1px); }
+  .btn-explore:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+ 
+  /* ─── Perspectives Area ─── */
+  .perspectives-area {
+    padding: 0 40px 32px;
+    flex: 1;
+  }
+ 
+  /* loading state */
+  .perspectives-loading {
+    display: none; padding: 28px 0;
+    text-align: center; font-family: 'DM Mono', monospace; font-size: 12px;
+    color: var(--violet-light);
+  }
+  .perspectives-loading.visible { display: block; }
+  .loading-bar {
+    height: 2px; background: #e8e4db; border-radius: 2px; margin: 14px auto; max-width: 200px;
+    overflow: hidden;
+  }
+  .loading-bar-fill {
+    height: 100%; width: 30%; background: var(--violet);
+    border-radius: 2px; animation: loadSlide 1.2s ease-in-out infinite;
+  }
+  @keyframes loadSlide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(450%); }
+  }
+ 
+  /* empty state */
+  .perspectives-empty {
+    padding: 48px 0; text-align: center;
+    font-family: 'DM Mono', monospace; font-size: 12px; color: #b0a898;
+    line-height: 2.2;
+  }
+  .perspectives-empty-icon { font-size: 36px; margin-bottom: 16px; opacity: 0.4; }
+ 
+  /* perspectives list */
+  .perspectives-result { display: none; animation: fadeSlideIn 0.5s ease; }
+  .perspectives-result.visible { display: block; }
+ 
+  .question-echo {
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--border); margin-bottom: 24px;
+  }
+  .question-echo-label {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  }
+  .question-echo-text {
+    font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--ink);
+    line-height: 1.3;
+  }
+ 
+  /* Your answer reflection */
+  .your-reflection {
+    background: var(--ink); color: var(--paper);
+    border-radius: 10px; padding: 18px 22px; margin-bottom: 20px;
+    border-left: 4px solid var(--violet);
+  }
+  .your-reflection-label {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--violet-light); margin-bottom: 8px;
+  }
+  .your-reflection-text {
+    font-size: 13px; color: #c0c0d8; line-height: 1.65;
+  }
+ 
+  /* perspective cards */
+  .perspectives-grid {
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .perspective-card {
+    border: 2px solid var(--border); border-radius: 12px; overflow: hidden;
+    animation: fadeSlideIn 0.4s ease both;
+  }
+  .perspective-card:nth-child(1) { animation-delay: 0.05s; }
+  .perspective-card:nth-child(2) { animation-delay: 0.12s; }
+  .perspective-card:nth-child(3) { animation-delay: 0.19s; }
+  .perspective-card:nth-child(4) { animation-delay: 0.26s; }
+ 
+  .perspective-header {
+    display: flex; align-items: center; gap: 12px; padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .perspective-icon {
+    width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+  }
+  .perspective-label-group { flex: 1; }
+  .perspective-name {
+    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink);
+  }
+  .perspective-stance {
+    font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px; margin-top: 2px;
+  }
+  .perspective-agree-badge {
+    font-family: 'DM Mono', monospace; font-size: 10px; padding: 4px 9px; border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+  .agree-yes { background: rgba(13,148,136,0.12); color: var(--teal); border: 1px solid rgba(13,148,136,0.3); }
+  .agree-no  { background: rgba(220,38,38,0.1); color: var(--red); border: 1px solid rgba(220,38,38,0.2); }
+  .agree-partial { background: rgba(232,160,32,0.12); color: var(--amber-dim); border: 1px solid rgba(232,160,32,0.3); }
+ 
+  .perspective-body { padding: 16px 18px; }
+  .perspective-text { font-size: 14px; line-height: 1.7; color: #3a3a4a; }
+  .perspective-keypoint {
+    margin-top: 12px; padding: 10px 14px;
+    background: var(--paper2); border-radius: 6px;
+    font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted);
+    line-height: 1.5; border-left: 3px solid var(--border);
+  }
+  .perspective-keypoint strong {
+    font-weight: 500; color: var(--ink); display: block; margin-bottom: 4px;
+    text-transform: uppercase; letter-spacing: 1px; font-size: 9px;
+  }
+ 
+  /* Synthesis card */
+  .synthesis-card {
+    background: var(--ink); color: var(--paper);
+    border-radius: 12px; padding: 24px; margin-top: 20px;
+    border: 2px solid var(--violet);
+    animation: fadeSlideIn 0.5s 0.3s ease both;
+  }
+  .synthesis-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--violet-light);
+  }
+  .synthesis-text { font-size: 14px; line-height: 1.75; color: #c0c0d8; }
+  .synthesis-question {
+    margin-top: 16px; padding: 12px 16px;
+    background: rgba(124,58,237,0.12); border-radius: 8px; border: 1px solid rgba(124,58,237,0.3);
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; color: var(--violet-light);
+    line-height: 1.5;
+  }
+  .synthesis-question::before { content: 'A question to ponder → '; font-weight: 400; color: #6a6a8a; font-family: 'DM Mono', monospace; font-size: 10px; display: block; margin-bottom: 6px; letter-spacing: 1px; text-transform: uppercase; }
+ 
+  /* Record to chain button */
+  .explore-record-row {
+    margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .btn-record-explore {
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+    padding: 11px 20px; border-radius: 7px; border: 2px solid var(--ink);
+    background: var(--ink); color: var(--paper); cursor: pointer;
+    transition: all 0.2s; display: flex; align-items: center; gap: 7px;
+  }
+  .btn-record-explore:hover { background: #1a1a2e; }
+  .btn-record-explore:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-new-explore {
+    font-family: 'DM Sans', sans-serif; font-size: 13px;
+    padding: 11px 18px; border-radius: 7px; border: 2px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer; transition: all 0.2s;
+  }
+  .btn-new-explore:hover { border-color: var(--ink); color: var(--ink); }
+ 
+  /* ─── Explore Right Panel ─── */
+  .explore-right {
+    background: var(--block-bg);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .explore-chain-header {
+    padding: 18px 24px; border-bottom: 1px solid #1e2040;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .explore-chain-title {
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+    color: var(--paper); display: flex; align-items: center; gap: 10px;
+  }
+  .explore-chain-icon { color: var(--violet-light); }
+  .explore-blocks-scroll { flex: 1; overflow-y: auto; padding: 16px; scrollbar-width: thin; scrollbar-color: #2a2a4a transparent; }
+ 
+  .explore-stat-panel {
+    border-top: 1px solid #1e2040; padding: 16px 20px;
+  }
+  .explore-stat-title {
+    font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+    color: #4a4a6a; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .explore-stat-title::after { content: ''; flex: 1; height: 1px; background: #1e2040; }
+  .explore-stat-empty { font-family: 'DM Mono', monospace; font-size: 11px; color: #3a3a5a; text-align: center; padding: 8px; }
+ 
+  .explore-stats-grid { display: none; gap: 8px; flex-direction: column; }
+  .explore-stats-grid.visible { display: flex; }
+  .explore-stat-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; background: #12122a; border-radius: 6px;
+    border: 1px solid #1e2040;
+  }
+  .explore-stat-name { font-family: 'DM Mono', monospace; font-size: 10px; color: #6a6a8a; text-transform: uppercase; letter-spacing: 0.5px; }
+  .explore-stat-num { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--violet-light); }
+ 
+  /* ─── Q CHIPS ─── */
+  .q-selector { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .q-chip {
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px;
+    text-transform: uppercase; padding: 5px 12px; border-radius: 4px;
+    border: 1.5px solid var(--border); background: transparent; color: var(--muted);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .q-chip:hover, .q-chip.active { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+ 
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--ink); color: var(--paper);
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    padding: 12px 24px; border-radius: 6px;
+    border-left: 3px solid var(--amber);
+    transition: transform 0.3s ease; z-index: 500;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+ 
+  /* responsive */
+  @media (max-width: 860px) {
+    main, #exploreSection { grid-template-columns: 1fr; }
+    .right-panel, .explore-right { border-top: 2px solid var(--ink); min-height: 300px; }
+    .hero, .explore-hero { padding: 32px 24px 28px; }
+    .question-section, .ai-section, .ask-panel, .perspectives-area { padding: 24px; }
+    header { padding: 16px 24px; flex-wrap: wrap; gap: 10px; }
+    .header-nav { order: 3; width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+ 
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">OC</div>
+    <div class="logo-text">Opinion<span>Chain</span></div>
+  </div>
+ 
+  <div class="header-nav">
+    <button class="nav-tab active" onclick="switchTab('chain')">⛓ Chain</button>
+    <button class="nav-tab" onclick="switchTab('explore')">✦ Ask & Explore</button>
+  </div>
+ 
+  <div class="header-right">
+    <div class="chain-status">
+      <div class="dot"></div>
+      <span id="chainStatusText">chain ready</span>
+    </div>
+    <button class="btn-connect" id="connectBtn" onclick="connectWallet()">⬡ Connect Wallet</button>
+  </div>
+</header>
+ 
+<!-- ══════════════════════════════════
+     TAB 1: CHAIN (original content)
+════════════════════════════════════ -->
+<main id="chainSection" class="page-section active">
+ 
+  <div class="left-panel">
+ 
+    <div class="hero">
+      <div class="hero-tag">AI + Blockchain</div>
+      <h2>Your thoughts, <em>analyzed</em><br>& secured forever.</h2>
+      <p>Answer questions honestly. AI profiles your thinking style. Every response is hashed and stored immutably on your personal opinion chain.</p>
+    </div>
+ 
+    <div class="question-section">
+      <div class="section-label">Current Question</div>
+ 
+      <div class="q-selector" id="categoryChips">
+        <button class="q-chip active" onclick="setCategory('philosophy', this)">Philosophy</button>
+        <button class="q-chip" onclick="setCategory('ethics', this)">Ethics</button>
+        <button class="q-chip" onclick="setCategory('society', this)">Society</button>
+        <button class="q-chip" onclick="setCategory('tech', this)">Technology</button>
+        <button class="q-chip" onclick="setCategory('personal', this)">Self</button>
+      </div>
+ 
+      <div class="question-card" id="questionCard">
+        <div class="q-number" id="qNumber">Q-001</div>
+        <div class="q-text" id="qText">Loading question...</div>
+        <div class="q-category" id="qCategory">— philosophy</div>
+      </div>
+ 
+      <div class="answer-area">
+        <textarea class="answer-input" id="answerInput"
+          placeholder="Write your honest opinion. There are no right or wrong answers — just yours."
+          maxlength="600" oninput="updateCharCount()"></textarea>
+        <div class="char-count"><span id="charCount">0</span> / 600</div>
+        <div class="submit-row">
+          <button class="btn-submit" id="submitBtn" onclick="submitOpinion()">⛓ Record on Chain</button>
+          <button class="btn-skip" onclick="nextQuestion()">Skip →</button>
+        </div>
+      </div>
+    </div>
+ 
+    <div class="ai-section">
+      <div class="section-label">AI Analysis</div>
+      <div class="ai-thinking" id="aiThinking">
+        <span>Claude is analyzing your thinking style</span>
+        <div class="think-dots"><span></span><span></span><span></span></div>
+      </div>
+      <div class="ai-result" id="aiResult">
+        <div class="ai-card">
+          <div class="ai-card-header">
+            <span>⚡ Thinking Profile</span>
+            <span class="ai-model-tag">claude-sonnet</span>
+          </div>
+          <div class="ai-body">
+            <div class="ai-thinking-style" id="aiStyle">—</div>
+            <div class="ai-summary" id="aiSummary">—</div>
+            <div class="ai-traits" id="aiTraits"></div>
+            <div class="ai-score-row" id="aiScores"></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:14px; font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); display:flex; align-items:center; gap:8px;" id="noAnalysisYet">
+        <span>⬤</span> Submit an opinion to see your AI-analyzed thinking profile.
+      </div>
+    </div>
+ 
+  </div>
+ 
+  <div class="right-panel">
+    <div class="chain-header">
+      <div class="chain-title"><span class="chain-icon">⛓</span>Opinion Ledger</div>
+      <div class="chain-count" id="blockCount">0 blocks</div>
+    </div>
+    <div class="chain-stats">
+      <div class="stat-box">
+        <div class="stat-val" id="statOpinions">0</div>
+        <div class="stat-key">Opinions</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="statIntegrity">✓</div>
+        <div class="stat-key">Chain Valid</div>
+      </div>
+    </div>
+    <div class="blocks-scroll" id="blocksScroll">
+      <div class="empty-chain" id="emptyChain">
+        <div class="empty-icon">⬡</div>
+        <div>No blocks mined yet.<br>Submit your first opinion<br>to start the chain.</div>
+      </div>
+    </div>
+    <div class="profile-panel">
+      <div class="profile-title">Evolving Profile</div>
+      <div class="profile-empty" id="profileEmpty">Answer 2+ questions to build your profile.</div>
+      <div class="archetype-display" id="archetypeDisplay">
+        <div class="archetype-name" id="archetypeName">—</div>
+        <div class="archetype-desc" id="archetypeDesc">—</div>
+        <div class="profile-bars" id="profileBars"></div>
+      </div>
+    </div>
+  </div>
+ 
+</main>
+ 
+<!-- ══════════════════════════════════
+     TAB 2: ASK & EXPLORE
+════════════════════════════════════ -->
+<div id="exploreSection">
+ 
+  <!-- LEFT: Ask panel -->
+  <div class="explore-left">
+ 
+    <div class="explore-hero">
+      <div class="hero-tag">AI Perspective Engine</div>
+      <h2>Ask anything.<br>Explore <em>every angle</em>.</h2>
+      <p>Pose your own question — optionally share your take — and Claude generates multiple distinct perspectives, challenges your assumptions, and synthesizes the debate.</p>
+    </div>
+ 
+    <div class="ask-panel">
+      <div class="section-label">Your Question</div>
+ 
+      <div class="question-composer">
+        <div class="composer-header">
+          <div class="composer-icon">✦</div>
+          <div class="composer-label">Compose Your Question</div>
+        </div>
+        <textarea class="question-input-box" id="exploreQuestion"
+          placeholder="What question do you want to explore? e.g. Is it ever right to break a promise to someone you love?"
+          maxlength="400" rows="3"></textarea>
+ 
+        <div class="composer-divider"></div>
+ 
+        <textarea class="your-answer-box" id="exploreAnswer"
+          placeholder="(Optional) Share your own take first — AI will engage with your position directly..."
+          maxlength="500" rows="3"></textarea>
+ 
+        <div class="composer-footer">
+          <span class="composer-hint">Claude generates 4 perspectives + synthesis</span>
+          <button class="btn-explore" id="exploreBtn" onclick="runExplore()">
+            ✦ Explore Perspectives
+          </button>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- Results area -->
+    <div class="perspectives-area">
+ 
+      <!-- Empty state -->
+      <div class="perspectives-empty" id="perspectivesEmpty">
+        <div class="perspectives-empty-icon">✦</div>
+        Ask a question above.<br>
+        AI will generate multiple distinct perspectives,<br>
+        challenge your view, and synthesize the core tension.
+      </div>
+ 
+      <!-- Loading -->
+      <div class="perspectives-loading" id="perspectivesLoading">
+        <div style="margin-bottom:8px;">✦ Claude is generating perspectives...</div>
+        <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+        <div style="font-size:10px; color: #8a6a9a; margin-top:6px;">Exploring multiple angles of your question</div>
+      </div>
+ 
+      <!-- Result -->
+      <div class="perspectives-result" id="perspectivesResult">
+ 
+        <div class="question-echo">
+          <div class="question-echo-label">Exploring</div>
+          <div class="question-echo-text" id="echoQuestion">—</div>
+        </div>
+ 
+        <!-- Your answer reflection (shown if user gave answer) -->
+        <div class="your-reflection" id="yourReflection" style="display:none">
+          <div class="your-reflection-label">Your Position · AI Reflection</div>
+          <div class="your-reflection-text" id="yourReflectionText">—</div>
+        </div>
+ 
+        <!-- Perspective cards -->
+        <div class="perspectives-grid" id="perspectivesGrid"></div>
+ 
+        <!-- Synthesis -->
+        <div class="synthesis-card" id="synthesisCard">
+          <div class="synthesis-header">⬡ Synthesis</div>
+          <div class="synthesis-text" id="synthesisText">—</div>
+          <div class="synthesis-question" id="synthesisQuestion">—</div>
+        </div>
+ 
+        <!-- Actions -->
+        <div class="explore-record-row">
+          <button class="btn-record-explore" id="recordExploreBtn" onclick="recordExploreToChain()">
+            ⛓ Record Exploration to Chain
+          </button>
+          <button class="btn-new-explore" onclick="resetExplore()">New Question →</button>
+        </div>
+ 
+      </div>
+    </div>
+ 
+  </div>
+ 
+  <!-- RIGHT: Explore ledger -->
+  <div class="explore-right">
+    <div class="explore-chain-header">
+      <div class="explore-chain-title">
+        <span class="explore-chain-icon">✦</span>
+        Explorations Ledger
+      </div>
+      <div class="chain-count" id="exploreBlockCount">0 explorations</div>
+    </div>
+ 
+    <div class="explore-blocks-scroll" id="exploreBlocksScroll">
+      <div class="empty-chain" id="exploreEmptyChain">
+        <div class="empty-icon">✦</div>
+        <div>No explorations yet.<br>Ask your first question<br>to begin.</div>
+      </div>
+    </div>
+ 
+    <div class="explore-stat-panel">
+      <div class="explore-stat-title">Stats</div>
+      <div class="explore-stat-empty" id="exploreStatEmpty">Run an exploration to see stats.</div>
+      <div class="explore-stats-grid" id="exploreStatsGrid">
+        <div class="explore-stat-row">
+          <span class="explore-stat-name">Questions Asked</span>
+          <span class="explore-stat-num" id="statQAsked">0</span>
+        </div>
+        <div class="explore-stat-row">
+          <span class="explore-stat-name">Perspectives Generated</span>
+          <span class="explore-stat-num" id="statPerspectives">0</span>
+        </div>
+        <div class="explore-stat-row">
+          <span class="explore-stat-name">Own Answers Given</span>
+          <span class="explore-stat-num" id="statOwnAnswers">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toastIcon">⛓</span>
+  <span id="toastMsg">Block mined!</span>
+</div>
+ 
+<script>
+  // ══════════════════════════════════════════════════
+// SEPOLIA CONTRACT SETUP
+// ══════════════════════════════════════════════════
+const CONTRACT_ADDRESS = '0x59636DBBD9AB97417C123b4c98F2a68d39926A43'; // ← from Remix
+
+const CONTRACT_ABI = [
+  {
+    "inputs": [
+      {"name": "question",  "type": "string"},
+      {"name": "answer",    "type": "string"},
+      {"name": "category",  "type": "string"},
+      {"name": "aiStyle",   "type": "string"},
+      {"name": "blockHash", "type": "string"}
+    ],
+    "name": "recordOpinion",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getMyOpinions",
+    "outputs": [{
+      "components": [
+        {"name": "index",     "type": "uint256"},
+        {"name": "question",  "type": "string"},
+        {"name": "answer",    "type": "string"},
+        {"name": "category",  "type": "string"},
+        {"name": "aiStyle",   "type": "string"},
+        {"name": "blockHash", "type": "string"},
+        {"name": "timestamp", "type": "uint256"},
+        {"name": "wallet",    "type": "address"}
+      ],
+      "type": "tuple[]"
+    }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalOpinions",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
+let contract = null;
+
+async function initContract() {
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    
+    // Force switch to Sepolia (chainId 11155111)
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: '0xaa36a7' }], // 0xaa36a7 = 11155111 = Sepolia
+    });
+
+    // Re-create provider AFTER switching network
+    const sepoliaProvider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = sepoliaProvider.getSigner();
+    contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+    
+    const network = await sepoliaProvider.getNetwork();
+    console.log('✅ Contract connected on network:', network.name, 'chainId:', network.chainId);
+  } catch(e) {
+    console.error('Contract init failed:', e);
+    showToast('⚠', 'Please switch MetaMask to Sepolia network');
+  }
+}
+
+async function saveToSepolia(block) {
+  if (!contract) {
+    showToast('⚠', 'Connect wallet to save on-chain');
+    return;
+  }
+  try {
+    showToast('⛓', 'Sending to Sepolia...');
+    const tx = await contract.recordOpinion(
+      block.question,
+      block.answer,
+      block.category,
+      block.aiStyle,
+      block.hash
+    );
+    showToast('⏳', 'Mining on Sepolia (~15 sec)...');
+    await tx.wait();
+    showToast('✅', 'On-chain! Tx: ' + tx.hash.slice(0,14) + '...');
+    console.log('🔗 Sepolia tx:', 'https://sepolia.etherscan.io/tx/' + tx.hash);
+  } catch(e) {
+    if (e.code === 4001) {
+      showToast('⚠', 'Transaction cancelled');
+    } else {
+      showToast('⚠', 'Failed: ' + e.message.slice(0,50));
+    }
+  }
+}
+// ══════════════════════════════════════════════════
+// QUESTION BANK
+// ══════════════════════════════════════════════════
+const QUESTIONS = {
+  philosophy: [
+    "Do you believe humans have free will, or are our choices determined by factors beyond our control?",
+    "Is objective moral truth possible, or is all morality culturally constructed?",
+    "If you could know the exact date and cause of your death, would you want to know?",
+    "Is consciousness something that emerges from physical matter, or is it something more?",
+    "Do you think the universe has inherent meaning, or do we invent meaning ourselves?"
+  ],
+  ethics: [
+    "Is it ever acceptable to lie to protect someone you love from painful truth?",
+    "Should individuals prioritize their own family's wellbeing over strangers in greater need?",
+    "Is civil disobedience justified when laws are unjust? Where do you draw the line?",
+    "Do wealthy individuals have a moral obligation to give most of their wealth away?",
+    "Is it ethical to eat meat in a world where alternatives are readily available?"
+  ],
+  society: [
+    "Has social media done more harm than good to society overall?",
+    "Should freedom of speech have absolute protection, even for harmful ideas?",
+    "Is economic inequality an inevitable result of human nature or a policy failure?",
+    "Do you think democracy is still the best possible system of governance?",
+    "Should future generations have legal rights that current generations must protect?"
+  ],
+  tech: [
+    "Should AI systems be granted any form of legal rights or moral consideration?",
+    "Is the erosion of privacy an acceptable trade-off for technological convenience?",
+    "Will artificial general intelligence make human creative work irrelevant?",
+    "Do you think humanity will colonize other planets within 100 years?",
+    "Should there be a global pause on developing increasingly powerful AI systems?"
+  ],
+  personal: [
+    "What belief about yourself has changed the most in the last five years?",
+    "If you could redesign your education, what would be fundamentally different?",
+    "What tension between two of your values causes you the most internal conflict?",
+    "Do you think you are more a product of your nature or your environment?",
+    "What is one thing you believe that most people around you would disagree with?"
+  ]
+};
+ 
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+let currentCategory = 'philosophy';
+let currentQuestionIndex = 0;
+let usedIndices = { philosophy:[], ethics:[], society:[], tech:[], personal:[] };
+let chain = [];
+let walletAddress = null;
+let profileData = { analytical:0, empathetic:0, skeptical:0, creative:0, pragmatic:0, idealistic:0, count:0 };
+let questionCounter = 1;
+let isSubmitting = false;
+ 
+// Explore state
+let exploreChain = [];
+let currentExploreData = null;
+let isExploring = false;
+let exploreStats = { asked: 0, perspectives: 0, ownAnswers: 0 };
+ 
+// ══════════════════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  if (tab === 'chain') {
+    document.getElementById('chainSection').classList.add('active');
+    document.getElementById('exploreSection').classList.remove('active');
+    document.querySelectorAll('.nav-tab')[0].classList.add('active');
+  } else {
+    document.getElementById('chainSection').classList.remove('active');
+    document.getElementById('exploreSection').classList.add('active');
+    document.querySelectorAll('.nav-tab')[1].classList.add('active');
+  }
+}
+ 
+// ══════════════════════════════════════════════════
+// CRYPTO HASH
+// ══════════════════════════════════════════════════
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+}
+ 
+async function mineBlock(data) {
+  let nonce = 0, hash = '';
+  while (true) {
+    hash = await sha256(data + nonce);
+    if (hash.startsWith('00')) break;
+    nonce++;
+    if (nonce > 100000) break;
+  }
+  return { nonce, hash };
+}
+ 
+// ══════════════════════════════════════════════════
+// WALLET
+// ══════════════════════════════════════════════════
+async function connectWallet() {
+  // Already connected
+  if (walletAddress) return;
+
+  // MetaMask not installed
+  if (typeof window.ethereum === 'undefined') {
+    showToast('⚠', 'MetaMask not found — redirecting to install page...');
+    setTimeout(() => window.open('https://metamask.io/download/', '_blank'), 1500);
+    return;
+  }
+
+  const btn = document.getElementById('connectBtn');
+  btn.textContent = '⏳ Connecting...';
+  btn.disabled = true;
+
+  try {
+    // Request account access — opens MetaMask popup
+    const accounts = await window.ethereum.request({
+      method: 'eth_requestAccounts'
+    });
+
+    walletAddress = accounts[0];
+
+    btn.textContent = walletAddress.slice(0,6) + '...' + walletAddress.slice(-4);
+    btn.classList.add('connected');
+    btn.disabled = false;
+
+    document.getElementById('chainStatusText').textContent = 'MetaMask connected';
+    showToast('⬡', 'MetaMask connected · ' + walletAddress.slice(0,6) + '...' + walletAddress.slice(-4));
+    await initContract();
+
+    // Listen for account switches
+    window.ethereum.on('accountsChanged', (newAccounts) => {
+      if (newAccounts.length === 0) {
+        // User disconnected
+        walletAddress = null;
+        btn.textContent = '⬡ Connect Wallet';
+        btn.classList.remove('connected');
+        btn.disabled = false;
+        document.getElementById('chainStatusText').textContent = 'chain ready';
+        showToast('⚠', 'MetaMask disconnected');
+      } else {
+        walletAddress = newAccounts[0];
+        btn.textContent = walletAddress.slice(0,6) + '...' + walletAddress.slice(-4);
+        showToast('⬡', 'Account switched · ' + walletAddress.slice(0,6) + '...' + walletAddress.slice(-4));
+      }
+    });
+
+    // Listen for network switches
+    window.ethereum.on('chainChanged', () => {
+      showToast('⛓', 'Network changed — reloading...');
+      setTimeout(() => window.location.reload(), 1000);
+    });
+
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = '⬡ Connect Wallet';
+
+    if (err.code === 4001) {
+      // User clicked "Reject" in MetaMask
+      showToast('⚠', 'Connection rejected by user.');
+    } else {
+      showToast('⚠', 'Connection failed: ' + err.message);
+    }
+  }
+}
+ 
+// ══════════════════════════════════════════════════
+// QUESTION MANAGEMENT
+// ══════════════════════════════════════════════════
+function setCategory(cat, el) {
+  currentCategory = cat;
+  document.querySelectorAll('.q-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  nextQuestion();
+}
+ 
+function loadQuestion() {
+  const pool = QUESTIONS[currentCategory];
+  let available = pool.map((_,i)=>i).filter(i => !usedIndices[currentCategory].includes(i));
+  if (available.length === 0) { usedIndices[currentCategory] = []; available = pool.map((_,i)=>i); }
+  const idx = available[Math.floor(Math.random() * available.length)];
+  usedIndices[currentCategory].push(idx);
+  currentQuestionIndex = idx;
+  document.getElementById('qNumber').textContent = 'Q-' + String(questionCounter).padStart(3,'0');
+  document.getElementById('qText').textContent = pool[idx];
+  document.getElementById('qCategory').textContent = '— ' + currentCategory;
+  const card = document.getElementById('questionCard');
+  card.style.animation = 'none'; card.offsetHeight; card.style.animation = 'fadeSlideIn 0.4s ease';
+}
+ 
+function nextQuestion() {
+  questionCounter++;
+  document.getElementById('answerInput').value = '';
+  document.getElementById('charCount').textContent = '0';
+  loadQuestion();
+}
+ 
+function updateCharCount() {
+  document.getElementById('charCount').textContent = document.getElementById('answerInput').value.length;
+}
+ 
+// ══════════════════════════════════════════════════
+// SUBMIT OPINION
+// ══════════════════════════════════════════════════
+async function submitOpinion() {
+  const answer = document.getElementById('answerInput').value.trim();
+  if (answer.length < 15) { showToast('⚠', 'Please write at least 15 characters.'); return; }
+  if (isSubmitting) return;
+  isSubmitting = true;
+ 
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span style="animation:pulse 1s infinite">⏳</span> Mining block...';
+ 
+  const question = document.getElementById('qText').textContent;
+  const category = currentCategory;
+ 
+  document.getElementById('noAnalysisYet').style.display = 'none';
+  document.getElementById('aiResult').classList.remove('visible');
+  document.getElementById('aiThinking').classList.add('visible');
+ 
+  const [aiData] = await Promise.all([analyzeWithClaude(question, answer, category)]);
+ 
+  const prevHash = chain.length > 0 ? chain[chain.length - 1].hash : '0'.repeat(64);
+  const blockData = JSON.stringify({ index: chain.length, timestamp: Date.now(), question, answer, category, aiStyle: aiData.style, wallet: walletAddress || 'anonymous', prevHash });
+ 
+  btn.innerHTML = '⚙ Proof of Work...';
+  const { nonce, hash } = await mineBlock(blockData);
+ 
+  const block = { index: chain.length, timestamp: Date.now(), question, answer, category, aiStyle: aiData.style, aiSummary: aiData.summary, aiTraits: aiData.traits, aiScores: aiData.scores, prevHash, hash, nonce, wallet: walletAddress || 'anonymous' };
+  chain.push(block);
+ 
+  if (aiData.scores) {
+    const keys = ['analytical','empathetic','skeptical','creative','pragmatic','idealistic'];
+    keys.forEach(k => { if (aiData.scores[k]) profileData[k] = (profileData[k] * profileData.count + aiData.scores[k]) / (profileData.count + 1); });
+    profileData.count++;
+  }
+ 
+  document.getElementById('aiThinking').classList.remove('visible');
+  renderAIResult(aiData);
+  renderBlock(block);
+  updateStats();
+  updateProfile(aiData);
+  showToast('⛓', `Block #${block.index} mined · hash: ${hash.slice(0,10)}...`);
+  await saveToSepolia(block);
+ 
+  isSubmitting = false;
+  btn.disabled = false;
+  btn.innerHTML = '⛓ Record on Chain';
+  nextQuestion();
+}
+ 
+// ══════════════════════════════════════════════════
+// CHAIN AI ANALYSIS
+// ══════════════════════════════════════════════════
+async function analyzeWithClaude(question, answer, category) {
+  const prompt = `You are OpinionChain's AI analyst. A user just answered a philosophical/opinion question.
+ 
+Question: "${question}"
+Category: ${category}
+Their Answer: "${answer}"
+ 
+Analyze their thinking style and return ONLY valid JSON (no markdown, no backticks) with this exact structure:
+{
+  "style": "2-4 word thinking style label (e.g. 'Pragmatic Humanist', 'Critical Idealist', 'Rational Empath')",
+  "summary": "2-3 sentence analysis of their reasoning style, intellectual tendencies, and how they approach this type of question. Be specific and insightful, not generic.",
+  "traits": ["trait1", "trait2", "trait3", "trait4"],
+  "scores": {
+    "analytical": 0-100,
+    "empathetic": 0-100,
+    "skeptical": 0-100,
+    "creative": 0-100,
+    "pragmatic": 0-100,
+    "idealistic": 0-100
+  }
+}`;
+ 
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, messages: [{ role: "user", content: prompt }] })
+    });
+    const data = await response.json();
+    const text = data.content.map(i => i.text || '').join('');
+    return JSON.parse(text.replace(/```json|```/g, '').trim());
+  } catch(e) {
+    return { style: "Independent Thinker", summary: "This response shows nuanced engagement with the question. The thinker demonstrates a willingness to sit with complexity rather than defaulting to easy answers.", traits: ["nuanced", "reflective", "independent", "thoughtful"], scores: { analytical: 65, empathetic: 60, skeptical: 55, creative: 60, pragmatic: 50, idealistic: 55 } };
+  }
+}
+ 
+// ══════════════════════════════════════════════════
+// EXPLORE: MULTI-PERSPECTIVE AI
+// ══════════════════════════════════════════════════
+async function runExplore() {
+  const question = document.getElementById('exploreQuestion').value.trim();
+  const userAnswer = document.getElementById('exploreAnswer').value.trim();
+ 
+  if (question.length < 10) { showToast('⚠', 'Please write a question (at least 10 chars).'); return; }
+  if (isExploring) return;
+  isExploring = true;
+ 
+  const btn = document.getElementById('exploreBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Exploring...';
+ 
+  document.getElementById('perspectivesEmpty').style.display = 'none';
+  document.getElementById('perspectivesResult').classList.remove('visible');
+  document.getElementById('perspectivesLoading').classList.add('visible');
+ 
+  const exploreData = await fetchPerspectives(question, userAnswer);
+  currentExploreData = { question, userAnswer, ...exploreData, timestamp: Date.now() };
+ 
+  document.getElementById('perspectivesLoading').classList.remove('visible');
+ 
+  if (exploreData) {
+    renderPerspectives(question, userAnswer, exploreData);
+    exploreStats.asked++;
+    exploreStats.perspectives += (exploreData.perspectives || []).length;
+    if (userAnswer.length > 0) exploreStats.ownAnswers++;
+    updateExploreStats();
+  }
+ 
+  isExploring = false;
+  btn.disabled = false;
+  btn.innerHTML = '✦ Explore Perspectives';
+}
+ 
+async function fetchPerspectives(question, userAnswer) {
+  const hasAnswer = userAnswer.length > 10;
+ 
+  const prompt = `You are a rigorous philosophical debate engine. Given a question${hasAnswer ? ' and the user\'s own position' : ''}, generate a rich multi-perspective exploration.
+ 
+Question: "${question}"
+${hasAnswer ? `User's Own Answer: "${userAnswer}"` : ''}
+ 
+Return ONLY valid JSON (no markdown, no backticks, no commentary) with this exact structure:
+{
+  ${hasAnswer ? `"yourReflection": "2-3 sentences reflecting on the user's specific position — what it reveals about their values, what assumptions it makes, what its strongest and weakest points are. Be honest and intellectually generous.",` : ''}
+  "perspectives": [
+    {
+      "name": "Short label for this perspective (e.g. 'The Utilitarian Case', 'Existentialist View', 'Devil's Advocate')",
+      "stance": "agrees / disagrees / reframes / challenges",
+      "icon": "single emoji that fits this perspective",
+      "color": "one of: teal, amber, red, violet, blue, green",
+      "text": "3-4 sentences articulating this perspective clearly and compellingly, in its own voice. Make it genuinely thought-provoking.",
+      "keyPoint": "The single most important insight or challenge from this perspective in one sentence."
+    }
+  ],
+  "synthesis": "3-4 sentences synthesizing the core tension across all perspectives. What is the fundamental disagreement? What do they all agree on despite their differences?",
+  "ponderQuestion": "One genuinely challenging follow-up question that cuts to the heart of the issue and would make someone think differently."
+}
+ 
+Generate exactly 4 perspectives. Make them genuinely distinct — different philosophical traditions, different value systems, different framings. Avoid generic or surface-level takes.`;
+ 
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1600, messages: [{ role: "user", content: prompt }] })
+    });
+    const data = await response.json();
+    const text = data.content.map(i => i.text || '').join('');
+    return JSON.parse(text.replace(/```json|```/g, '').trim());
+  } catch(e) {
+    return {
+      yourReflection: "Your position shows a thoughtful engagement with the question's core tension.",
+      perspectives: [
+        { name: "The Pragmatist", stance: "reframes", icon: "⚙", color: "teal", text: "Rather than asking what is theoretically right, ask what actually works. The pragmatist evaluates ideas by their consequences and effects on lived experience.", keyPoint: "Truth is what proves itself useful in practice." },
+        { name: "The Idealist", stance: "challenges", icon: "✦", color: "violet", text: "Some principles are worth upholding even when costly. The idealist argues that how we answer this question reveals what kind of people and society we want to become.", keyPoint: "Compromise on values is often compromise on identity." },
+        { name: "The Skeptic", stance: "disagrees", icon: "?", color: "amber", text: "Both sides may be operating on unexamined assumptions. Before choosing a position, examine the question itself — is it asking the right thing?", keyPoint: "The framing of a question often predetermines the answer." },
+        { name: "The Humanist", stance: "agrees", icon: "♡", color: "red", text: "Whatever the abstract argument, people's lives are the measure. Any answer that ignores the human cost of being wrong is philosophically incomplete.", keyPoint: "Ethics without empathy is just clever rationalization." }
+      ],
+      synthesis: "The perspectives reveal a fundamental tension between principle and consequence, between what we believe and what we can achieve. Remarkably, all perspectives agree that the question matters — they disagree only on the grounds for answering it.",
+      ponderQuestion: "If you discovered your position on this question was causing harm, would you change it — or double down?"
+    };
+  }
+}
+ 
+function renderPerspectives(question, userAnswer, data) {
+  document.getElementById('echoQuestion').textContent = question;
+ 
+  // Your reflection
+  const reflEl = document.getElementById('yourReflection');
+  if (userAnswer.length > 5 && data.yourReflection) {
+    reflEl.style.display = 'block';
+    document.getElementById('yourReflectionText').textContent = data.yourReflection;
+  } else {
+    reflEl.style.display = 'none';
+  }
+ 
+  // Perspective cards
+  const colorMap = {
+    teal:   { bg: 'rgba(13,148,136,0.1)', border: 'rgba(13,148,136,0.3)', icon: '#0d9488' },
+    amber:  { bg: 'rgba(232,160,32,0.1)', border: 'rgba(232,160,32,0.3)', icon: '#e8a020' },
+    red:    { bg: 'rgba(220,38,38,0.08)', border: 'rgba(220,38,38,0.25)', icon: '#dc2626' },
+    violet: { bg: 'rgba(124,58,237,0.1)', border: 'rgba(124,58,237,0.3)', icon: '#7c3aed' },
+    blue:   { bg: 'rgba(6,182,212,0.1)',  border: 'rgba(6,182,212,0.3)',  icon: '#0891b2' },
+    green:  { bg: 'rgba(5,150,105,0.1)',  border: 'rgba(5,150,105,0.3)',  icon: '#059669' },
+  };
+ 
+  const stanceBadge = (s) => {
+    if (s === 'agrees')    return '<span class="perspective-agree-badge agree-yes">Supports</span>';
+    if (s === 'disagrees') return '<span class="perspective-agree-badge agree-no">Challenges</span>';
+    return '<span class="perspective-agree-badge agree-partial">Reframes</span>';
+  };
+ 
+  const grid = document.getElementById('perspectivesGrid');
+  grid.innerHTML = (data.perspectives || []).map(p => {
+    const c = colorMap[p.color] || colorMap.teal;
+    return `
+      <div class="perspective-card" style="border-color: ${c.border}">
+        <div class="perspective-header" style="background: ${c.bg}; border-color: ${c.border}">
+          <div class="perspective-icon" style="background: ${c.bg}; border: 1px solid ${c.border}; color: ${c.icon}">${p.icon}</div>
+          <div class="perspective-label-group">
+            <div class="perspective-name">${p.name}</div>
+            <div class="perspective-stance">${p.stance}</div>
+          </div>
+          ${stanceBadge(p.stance)}
+        </div>
+        <div class="perspective-body">
+          <div class="perspective-text">${p.text}</div>
+          <div class="perspective-keypoint">
+            <strong>Core Insight</strong>
+            ${p.keyPoint}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+ 
+  // Synthesis
+  document.getElementById('synthesisText').textContent = data.synthesis || '';
+  document.getElementById('synthesisQuestion').textContent = data.ponderQuestion || '';
+ 
+  document.getElementById('perspectivesResult').classList.add('visible');
+}
+ 
+// ══════════════════════════════════════════════════
+// RECORD EXPLORATION TO CHAIN
+// ══════════════════════════════════════════════════
+async function recordExploreToChain() {
+  if (!currentExploreData) return;
+  const btn = document.getElementById('recordExploreBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⚙ Mining...';
+ 
+  const { question, userAnswer, synthesis, ponderQuestion, timestamp } = currentExploreData;
+  const prevHash = exploreChain.length > 0 ? exploreChain[exploreChain.length-1].hash : '0'.repeat(64);
+  const blockData = JSON.stringify({ index: exploreChain.length, timestamp, question, userAnswer: userAnswer || 'none', synthesis, prevHash });
+  const { nonce, hash } = await mineBlock(blockData);
+ 
+  const block = { index: exploreChain.length, timestamp, question, userAnswer: userAnswer || '', synthesis, ponderQuestion, prevHash, hash, nonce, perspectiveCount: (currentExploreData.perspectives || []).length };
+  exploreChain.push(block);
+ 
+  renderExploreBlock(block);
+  showToast('✦', `Exploration #${block.index} recorded · hash: ${hash.slice(0,10)}...`);
+  btn.innerHTML = '✓ Recorded';
+  document.getElementById('exploreBlockCount').textContent = exploreChain.length + ' explorations';
+}
+ 
+function renderExploreBlock(block) {
+  const scroll = document.getElementById('exploreBlocksScroll');
+  document.getElementById('exploreEmptyChain').style.display = 'none';
+ 
+  const timeStr = new Date(block.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const truncate = (s, n=100) => s && s.length > n ? s.slice(0,n) + '…' : (s || '');
+ 
+  const card = document.createElement('div');
+  card.innerHTML = (exploreChain.length > 1 ? '<div class="chain-link">│</div>' : '') + `
+    <div class="block-card explore-block">
+      <div class="block-header">
+        <div class="block-id explore">✦ <span class="block-num explore">EXPLORE #${block.index}</span></div>
+        <div class="block-ts">${timeStr}</div>
+      </div>
+      <div class="block-body">
+        <div class="block-q">Question · ${block.perspectiveCount} perspectives</div>
+        <div class="block-answer">${truncate(block.question)}</div>
+        <div class="block-ai-tag explore">⬡ ${block.perspectiveCount} angles explored</div>
+        <div class="block-hash-row">
+          <div class="hash-line"><span class="hash-key">HASH</span><span class="hash-val valid">${block.hash}</span></div>
+          <div class="hash-line"><span class="hash-key">NONCE</span><span class="hash-val">${block.nonce}</span></div>
+          <div class="valid-badge">✓ VALID · Exploration recorded</div>
+        </div>
+      </div>
+    </div>`;
+  scroll.insertBefore(card, scroll.firstChild);
+  scroll.scrollTop = 0;
+}
+ 
+function resetExplore() {
+  document.getElementById('exploreQuestion').value = '';
+  document.getElementById('exploreAnswer').value = '';
+  document.getElementById('perspectivesResult').classList.remove('visible');
+  document.getElementById('perspectivesEmpty').style.display = 'block';
+  currentExploreData = null;
+  const btn = document.getElementById('recordExploreBtn');
+  btn.disabled = false;
+  btn.innerHTML = '⛓ Record Exploration to Chain';
+}
+ 
+function updateExploreStats() {
+  document.getElementById('exploreStatEmpty').style.display = 'none';
+  document.getElementById('exploreStatsGrid').classList.add('visible');
+  document.getElementById('statQAsked').textContent = exploreStats.asked;
+  document.getElementById('statPerspectives').textContent = exploreStats.perspectives;
+  document.getElementById('statOwnAnswers').textContent = exploreStats.ownAnswers;
+}
+ 
+// ══════════════════════════════════════════════════
+// RENDER CHAIN AI RESULT
+// ══════════════════════════════════════════════════
+function renderAIResult(ai) {
+  const parts = ai.style.split(' ');
+  document.getElementById('aiStyle').innerHTML = parts.map((w,i) => i === parts.length-1 ? `<span>${w}</span>` : w).join(' ');
+  document.getElementById('aiSummary').textContent = ai.summary;
+  document.getElementById('aiTraits').innerHTML = ai.traits.map((t,i) => `<span class="trait-chip ${i<2?'highlight':''}">${t}</span>`).join('');
+  const sc = ai.scores;
+  document.getElementById('aiScores').innerHTML = [
+    {k:'analytical',label:'Analytical',color:'#0d9488'},
+    {k:'empathetic',label:'Empathetic',color:'#f472b6'},
+    {k:'creative',label:'Creative',color:'#e8a020'}
+  ].map(s => `
+    <div class="score-item">
+      <div class="score-val">${sc[s.k]||50}</div>
+      <div class="score-bar-wrap"><div class="score-bar" style="width:${sc[s.k]||50}%;background:${s.color}"></div></div>
+      <div class="score-label">${s.label}</div>
+    </div>`).join('');
+  document.getElementById('aiResult').classList.add('visible');
+}
+ 
+// ══════════════════════════════════════════════════
+// RENDER CHAIN BLOCK
+// ══════════════════════════════════════════════════
+function renderBlock(block) {
+  const scroll = document.getElementById('blocksScroll');
+  document.getElementById('emptyChain').style.display = 'none';
+  const truncate = (s, n=120) => s.length > n ? s.slice(0,n)+'…' : s;
+  const timeStr = new Date(block.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const card = document.createElement('div');
+  card.innerHTML = (chain.length > 1 ? '<div class="chain-link">│</div>' : '') + `
+    <div class="block-card" id="block-${block.index}">
+      <div class="block-header">
+        <div class="block-id">⬡ <span class="block-num">BLOCK #${block.index}</span></div>
+        <div class="block-ts">${timeStr}</div>
+      </div>
+      <div class="block-body">
+        <div class="block-q">${block.category} · ${document.getElementById('qNumber').textContent}</div>
+        <div class="block-answer">${truncate(block.answer)}</div>
+        <div class="block-ai-tag">⚡ ${block.aiStyle}</div>
+        <div class="block-hash-row">
+          <div class="hash-line"><span class="hash-key">HASH</span><span class="hash-val valid">${block.hash}</span></div>
+          <div class="hash-line"><span class="hash-key">PREV</span><span class="hash-val">${block.prevHash.slice(0,32)}…</span></div>
+          <div class="hash-line"><span class="hash-key">NONCE</span><span class="hash-val">${block.nonce}</span></div>
+          <div class="valid-badge">✓ VALID · Proof-of-Work confirmed</div>
+        </div>
+      </div>
+    </div>`;
+  scroll.insertBefore(card, scroll.firstChild);
+  scroll.scrollTop = 0;
+}
+ 
+function updateStats() {
+  const n = chain.length;
+  document.getElementById('blockCount').textContent = n + (n===1?' block':' blocks');
+  document.getElementById('statOpinions').textContent = n;
+  document.getElementById('statIntegrity').textContent = '✓';
+}
+ 
+// ══════════════════════════════════════════════════
+// PROFILE
+// ══════════════════════════════════════════════════
+function updateProfile(ai) {
+  if (chain.length < 1) return;
+  document.getElementById('profileEmpty').style.display = 'none';
+  document.getElementById('archetypeDisplay').classList.add('visible');
+  const sc = ai.scores;
+  const archetype = getArchetype(sc);
+  document.getElementById('archetypeName').textContent = archetype.name;
+  document.getElementById('archetypeDesc').textContent = archetype.desc;
+  const bars = [
+    {label:'Analytical',key:'analytical',color:'#0d9488'},
+    {label:'Empathetic',key:'empathetic',color:'#f472b6'},
+    {label:'Skeptical',key:'skeptical',color:'#e8a020'},
+    {label:'Creative',key:'creative',color:'#7c3aed'},
+    {label:'Pragmatic',key:'pragmatic',color:'#0891b2'},
+    {label:'Idealistic',key:'idealistic',color:'#059669'},
+  ];
+  const avgScores = {};
+  bars.forEach(b => { avgScores[b.key] = chain.reduce((s,bl) => s+(bl.aiScores?.[b.key]||50),0)/chain.length; });
+  document.getElementById('profileBars').innerHTML = bars.map(b => `
+    <div class="prof-bar-row">
+      <div class="prof-bar-label">${b.label}</div>
+      <div class="prof-bar-track"><div class="prof-bar-fill" style="width:${avgScores[b.key]}%;background:${b.color}"></div></div>
+      <div class="prof-bar-pct">${Math.round(avgScores[b.key])}</div>
+    </div>`).join('');
+}
+ 
+function getArchetype(sc) {
+  if (!sc) return { name: 'Deep Thinker', desc: 'A reflective mind that engages seriously with complexity.' };
+  const top = Object.entries(sc).sort((a,b)=>b[1]-a[1])[0][0];
+  return ({
+    analytical: { name: 'The Architect', desc: 'Logic-first, system-oriented thinker who builds frameworks to understand the world.' },
+    empathetic:  { name: 'The Humanist', desc: 'Human experience and emotional truth guides your reasoning above all else.' },
+    skeptical:   { name: 'The Questioner', desc: 'Nothing goes unexamined. You probe assumptions others accept as given.' },
+    creative:    { name: 'The Synthesizer', desc: 'You connect disparate ideas and see novel patterns others miss.' },
+    pragmatic:   { name: 'The Realist', desc: 'What works matters more than what sounds good. Grounded and outcome-focused.' },
+    idealistic:  { name: 'The Visionary', desc: 'You hold the world to a higher standard and believe improvement is always possible.' }
+  }[top]) || { name: 'Deep Thinker', desc: 'A reflective mind that engages seriously with complexity.' };
+}
+ 
+// ══════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════
+function showToast(icon, msg) {
+  document.getElementById('toastIcon').textContent = icon;
+  document.getElementById('toastMsg').textContent = msg;
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+ 
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+loadQuestion();
+</script>
+</body>
+</html>
